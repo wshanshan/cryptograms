@@ -1,6 +1,7 @@
 application_insane_mode.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
+.idea/*
 *.py[cod]
 *$py.class
 
