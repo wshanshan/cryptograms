@@ -12,10 +12,11 @@ import random
 import os
 
 difficulty = 3 # control the number of letters being replaced in the cryptogram.
+datafilePath = 'data/quotes.csv'
 
-def loadData(idx):
+def loadData(idx, datafilePath = datafilePath):
     # load a quote from \data\quotes.csv
-    with open('data/quotes.csv', newline='') as csvfile:
+    with open(datafilePath, newline='',encoding='cp1252') as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             if reader.line_num==idx:
@@ -25,24 +26,27 @@ def loadData(idx):
             else:
                 continue
 
-def genKeys(original):
+def genKeys(original, difficulty):
     # generate character mapping for encryption
     characterSet = [x for x in set(original.lower()) if x.isalpha()]
     nKeys = min(difficulty, len(characterSet))
 
+    #generate characters to be replaced
     keys = random.sample(characterSet, nKeys)
-    valueSet = set([chr(i) for i in range(ord('a'), ord('z'))]).difference(characterSet).union(set(keys))
-    values= random.sample(valueSet, nKeys)
+
+    # generate replacing characters
+    # note that all values are lowercases
     keyMap={}
-    for k in keys:
-        v = random.sample(set(values).difference(k),1)
-        values.remove(v[0])
-        keyMap[k]=v[0]
+    forbiddenVal = [ord(x) for x in characterSet]
+    for key in keys:
+        keyMap[key] = chr(random.sample([i for i in range(ord('a'), ord('z')) if i not in forbiddenVal],1)[0])
+        forbiddenVal.remove(ord(key))
+        forbiddenVal.append(ord(keyMap[key]))
 
     return keyMap
 
 def getUserKeys(keyMap):
-    # reverse key and value pairs in keyMap, to generate the answer for users
+    # reverse key and value pairs in keyMap to generate the game answer
     userKeys= {}
     for key in keyMap:
         userKeys[keyMap[key]]= key
@@ -50,10 +54,11 @@ def getUserKeys(keyMap):
 
 def encrypt(original, keyMap):
     encryptedList = list(original)
+
     for i in range(0,len(original)):
         if (original[i].lower() in keyMap):
             key = original[i].lower()
-            value = keyMap[key]
+            value = keyMap[key].lower()
             if (original[i].islower()):
                 encryptedList[i] = value
             else:
@@ -67,36 +72,44 @@ def score(userInputs,userKeys):
     wrongCnt = 0
 
     for key in userKeys:
-        if userKeys[key]==userInputs[key]:
+        if key in userInputs and userKeys[key].lower()==userInputs[key].lower():
             correctCnt +=1
         else:
             wrongCnt +=1
 
     if wrongCnt == 0:
-        return "You are awesome!"
+        return "You got it!"
     elif wrongCnt == 1:
         return "So close!"
     else:
         return "Try again!"
 
 if __name__ == "__main__":
+
+    # Uncomment the next line to use a fixed random seed
+    # random.seed(a=0)
+
     while True:
-        idx =random.randint(1, 1000)
+
+        idx =random.randint(0, 1000)    #1000 is the number of quotes in the datafile
         print('game id = ' + str(idx))
         [original, author] = loadData(idx)
 
         print(author)
-        keyMap = genKeys(original)
+        keyMap = genKeys(original, difficulty)
 
         encrypted = encrypt(original,keyMap)
         print(encrypted)
 
+        userKeys = getUserKeys(keyMap)
+
         print()
         input("Press enter when you are ready to crack the encrytogram...")
         userInputs={}
-        for key in keyMap:
-            ans = input(keyMap[key] + "=")
-            userInputs[keyMap[key]]=str(ans)
+
+        for key in userKeys:
+            ans = input(key + "=")
+            userInputs[key]=str(ans)
 
         print()
         print("your answer=")
@@ -105,7 +118,6 @@ if __name__ == "__main__":
         print()
         print('correct answer=')
         print(original)
-        userKeys = getUserKeys(keyMap)
         print(userKeys)
 
         print("****************" + score(userInputs,userKeys) + "****************")
